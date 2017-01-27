@@ -101,7 +101,6 @@ function lastVisitFromSession(success, failure) {
 		if (cookie.length > 0) {
                     chapter = cookie[0].value;
 		    initializeTextInUI(book, chapter);
-		    console.log('in session');
 		    success(book, chapter);
 		} else {
 		    failure();
@@ -118,16 +117,14 @@ function lastVisitFromDB(success) {
 	.then(function(doc) {
             book = doc.visit_history[0].bookId;
             chapter = doc.visit_history[0].chapter;
-	    console.log('in db');
 	    var cookie = { url: 'http://book.autographa.com', name: 'book', value: book };
             session.defaultSession.cookies.set(cookie, (error) => {
 		if (error)
                     console.error(error);
 		var cookie = { url: 'http://chapter.autographa.com', name: 'chapter', value: chapter };
 		session.defaultSession.cookies.set(cookie, (error) => {
-                    if (error)
+                if (error)
 			console.error(error);
-		    console.log('after session set');
 		    success(book, chapter);
 		});
             });
