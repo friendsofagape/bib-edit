@@ -121,6 +121,12 @@ session.defaultSession.cookies.get({ url: 'http://book.autographa.com' }, (error
     });
 });
 
+function getLastSave(){
+    return refDb.get("ref_history").then(function(doc) {
+        return {"bookId": doc.visit_history[0].bookId, "chapter": doc.visit_history[0].chapter }
+    });
+}
+
 function getDiffText(refId1, refId2, position, callback) {
     var t_ins = 0;
     var t_del = 0;
