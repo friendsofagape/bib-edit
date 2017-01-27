@@ -93,39 +93,75 @@ function createVerseInputs(verses, chunks, chapter) {
     highlightRef();
 }
 
-session.defaultSession.cookies.get({ url: 'http://book.autographa.com' }, (error, cookie) => {
-    refDb.get("ref_history").then(function(doc) {
-        book = doc.visit_history[0].bookId;
-        chapter = doc.visit_history[0].chapter;
+function lastVisitFromSession(success, failure) {
+    session.defaultSession.cookies.get({ url: 'http://book.autographa.com' }, (error, cookie) => {
         if (cookie.length > 0) {
-            book = cookie[0].value;
-        }
-        session.defaultSession.cookies.get({ url: 'http://chapter.autographa.com' }, (error, cookie) => {
-            if (cookie.length > 0) {
-                chapter = cookie[0].value;
-            }
-            document.getElementById('book-chapter-btn').innerHTML = booksList[parseInt(book, 10) - 1];
-            document.getElementById('chapterBtnSpan').innerHTML = '<a  id="chapterBtn" data-toggle="tooltip" data-placement="bottom"  title="Select Chapter" class="btn btn-default" href="javascript:getBookChapterList(' + "'" + book + "'" + ');" >' + chapter + '</a>'
-            $('a[data-toggle=tooltip]').tooltip();
-            db.get(book).then(function(doc) {
-                refDb.get('refChunks').then(function(chunkDoc) {
-                    // console.log(doc.chapters[parseInt(chapter,10)-1].verses.length);
-                    currentBook = doc;
-                    createRefSelections();
-                    createVerseInputs(doc.chapters[parseInt(chapter, 10) - 1].verses, chunkDoc.chunks[parseInt(book, 10) - 1], chapter);
-                });
-            }).catch(function(err) {
-                console.log('Error: While retrieving document. ' + err);
+	    book = cookie[0].value;
+	    session.defaultSession.cookies.get({ url: 'http://chapter.autographa.com' }, (error, cookie) => {
+		if (cookie.length > 0) {
+                    chapter = cookie[0].value;
+		    initializeTextInUI(book, chapter);
+		    console.log('in session');
+		    success(book, chapter);
+		} else {
+		    failure();
+		}
             });
-        });
-    });
-});
-
-function getLastSave(){
-    return refDb.get("ref_history").then(function(doc) {
-        return {"bookId": doc.visit_history[0].bookId, "chapter": doc.visit_history[0].chapter }
+        } else {
+	    failure();
+	}
     });
 }
+
+function lastVisitFromDB(success) {
+    refDb.get("ref_history")
+	.then(function(doc) {
+            book = doc.visit_history[0].bookId;
+            chapter = doc.visit_history[0].chapter;
+	    console.log('in db');
+	    var cookie = { url: 'http://book.autographa.com', name: 'book', value: book };
+            session.defaultSession.cookies.set(cookie, (error) => {
+		if (error)
+                    console.error(error);
+		var cookie = { url: 'http://chapter.autographa.com', name: 'chapter', value: chapter };
+		session.defaultSession.cookies.set(cookie, (error) => {
+                    if (error)
+			console.error(error);
+		    console.log('after session set');
+		    success(book, chapter);
+		});
+            });
+	}).catch(function(err) {
+            console.log('Error: While retrieving document. ' + err);
+	});
+}
+
+
+function initializeTextInUI(book, chapter) {
+    document.getElementById('book-chapter-btn').innerHTML = booksList[parseInt(book, 10) - 1];
+    document.getElementById('chapterBtnSpan').innerHTML = '<a  id="chapterBtn" data-toggle="tooltip" data-placement="bottom"  title="Select Chapter" class="btn btn-default" href="javascript:getBookChapterList(' + "'" + book + "'" + ');" >' + chapter + '</a>'
+    $('a[data-toggle=tooltip]').tooltip();
+    db.get(book).then(function(doc) {
+        refDb.get('refChunks').then(function(chunkDoc) {
+            // console.log(doc.chapters[parseInt(chapter,10)-1].verses.length);
+            currentBook = doc;
+            createRefSelections();
+            createVerseInputs(doc.chapters[parseInt(chapter, 10) - 1].verses, chunkDoc.chunks[parseInt(book, 10) - 1], chapter);
+        });
+    }).catch(function(err) {
+        console.log('Error: While retrieving document. ' + err);
+    });
+}
+
+// Get last viewed book and chapter either from session or from DB, in that order.
+lastVisitFromSession(
+    function(book, chapter) {
+	initializeTextInUI(book, chapter);
+    },
+    function() {
+	lastVisitFromDB(initializeTextInUI);
+    }
+);
 
 function getDiffText(refId1, refId2, position, callback) {
     var t_ins = 0;
